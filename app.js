@@ -1,8 +1,5 @@
-var express = require('express');
 var promise = require('bluebird');
 var fs = require('fs');
-
-var app = express();
 
 // promise.promisify(fn) 将方法promise化
 var readFileAsync = promise.promisify(fs.readFile);
@@ -104,8 +101,8 @@ promise.props({
 });
 
 
-// promise.any()    参数为数组,最先改变状态的promise的值传递给callback
-// callback参数为最先改变状态的promise的返回值
+// promise.any()  参数为数组,最先改变状态的promise的值传递给callback
+
 promise.any(rf).then(function (res) {
     console.log('any: ' + res);
 });
@@ -114,3 +111,50 @@ promise.any(rf).then(function (res) {
 promise.race(rf).then(function (res) {
     console.log('race: ' + res);
 });
+
+
+// promise.map()  参数为1个数组和回调函数
+
+var files = ['./test1.txt', './test2.txt', './test3.txt'];
+promise.map(files, function (file,index,length) {
+    console.log(length,index);
+    return readFileAsync(file);
+}).then(function (res) {
+    console.log('map: ' + res);
+});
+
+//可用于替代
+
+var promises = [];
+for (var i = 0, l = files.length; i < l; i++) {
+    promises.push(readFileAsync(files[i], 'utf-8'));
+}
+
+promise.all(promises).spread(function (f1, f2, f3) {
+    console.log(f1, f2, f3 + '-- map');
+});
+
+// promise.reduce(arr,callback,initValue)    与数组reduce类似 
+promise.reduce(files,function(total,item,index,length){
+    return readFileAsync(item,'utf-8').then(function(content){
+        return total += content;
+    });
+},'').then(function(res){
+    console.log('reduce: ' + res);
+});
+
+
+// promise.filter()  对promise进行筛选
+// promise.each()  迭代数组或promise数组
+
+var readdir = promise.promisify(fs.readdir);
+var stat = promise.promisify(fs.stat);
+
+readdir(process.cwd()).filter(function(filename){
+    return stat(filename).then(function(stat){
+        return stat.isDirectory();
+    });
+}).each(function(directoryName){
+    console.log(directoryName);
+});
+
